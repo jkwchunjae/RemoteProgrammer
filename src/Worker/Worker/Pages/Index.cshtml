@@ -78,6 +78,22 @@
     </div>
 </div>
 
+<!-- 작업 상세 정보 모달 -->
+<div id="jobDetailModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>작업 상세 정보</h3>
+            <button class="close-button" onclick="closeJobDetail()">&times;</button>
+        </div>
+        <div class="modal-body" id="jobDetailContent">
+            <p class="text-muted">로딩 중...</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeJobDetail()">닫기</button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         async function loadProjects() {
@@ -120,10 +136,10 @@
                     activeJobs.innerHTML = '<p class="text-muted">진행 중인 작업이 없습니다.</p>';
                 } else {
                     activeJobs.innerHTML = '<ul class="list-group">' +
-                        jobs.map(j => `<li class="list-group-item">
-                            <strong>${j.projectName}</strong> -
+                        jobs.map(j => `<li class="list-group-item clickable" onclick="showJobDetail('${j.id}')">
+                            <strong>${escapeHtml(j.projectName)}</strong> -
                             <span class="badge bg-${getStatusColor(j.status)}">${j.status}</span><br/>
-                            <small>${j.description.substring(0, 100)}...</small>
+                            <small>${escapeHtml(j.description.substring(0, 100))}${j.description.length > 100 ? '...' : ''}</small>
                         </li>`).join('') +
                         '</ul>';
                 }
@@ -143,11 +159,11 @@
                     jobHistory.innerHTML = '<p class="text-muted">작업 이력이 없습니다.</p>';
                 } else {
                     jobHistory.innerHTML = '<ul class="list-group">' +
-                        jobs.map(j => `<li class="list-group-item">
-                            <strong>${j.projectName}</strong> -
+                        jobs.map(j => `<li class="list-group-item clickable" onclick="showJobDetail('${j.id}', true)">
+                            <strong>${escapeHtml(j.projectName)}</strong> -
                             <span class="badge bg-${getStatusColor(j.status)}">${j.status}</span><br/>
-                            <small>${j.description.substring(0, 100)}...</small><br/>
-                            <small class="text-muted">${new Date(j.createdAt).toLocaleString()}</small>
+                            <small>${escapeHtml(j.description.substring(0, 100))}${j.description.length > 100 ? '...' : ''}</small><br/>
+                            <small class="text-muted">${new Date(j.createdAt).toLocaleString('ko-KR')}</small>
                         </li>`).join('') +
                         '</ul>';
                 }
@@ -164,6 +180,98 @@
                 case 'Pending': return 'secondary';
                 case 'WaitingForUserInput': return 'warning';
                 default: return 'secondary';
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function showJobDetail(jobId, isHistory = false) {
+            const modal = document.getElementById('jobDetailModal');
+            const content = document.getElementById('jobDetailContent');
+
+            modal.classList.add('show');
+            content.innerHTML = '<p class="text-muted">로딩 중...</p>';
+
+            try {
+                const endpoint = isHistory ? `/api/jobs/history?limit=100` : `/api/jobs/${jobId}`;
+                const response = await fetch(endpoint);
+
+                let job;
+                if (isHistory) {
+                    const jobs = await response.json();
+                    job = jobs.find(j => j.id === jobId);
+                } else {
+                    job = await response.json();
+                }
+
+                if (!job) {
+                    content.innerHTML = '<p class="text-danger">작업을 찾을 수 없습니다.</p>';
+                    return;
+                }
+
+                content.innerHTML = `
+                    <div class="detail-section">
+                        <h4>기본 정보</h4>
+                        <div class="detail-content">
+작업 ID: ${escapeHtml(job.id)}
+프로젝트: ${escapeHtml(job.projectName)}
+경로: ${escapeHtml(job.projectPath)}
+상태: ${job.status}
+생성 시간: ${job.createdAt ? new Date(job.createdAt).toLocaleString('ko-KR') : 'N/A'}
+시작 시간: ${job.startedAt ? new Date(job.startedAt).toLocaleString('ko-KR') : 'N/A'}
+완료 시간: ${job.completedAt ? new Date(job.completedAt).toLocaleString('ko-KR') : 'N/A'}
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>작업 설명</h4>
+                        <div class="detail-content">${escapeHtml(job.description)}</div>
+                    </div>
+
+                    ${job.result ? `
+                    <div class="detail-section">
+                        <h4>작업 결과</h4>
+                        <div class="detail-content">${escapeHtml(job.result)}</div>
+                    </div>
+                    ` : ''}
+
+                    ${job.errorMessage ? `
+                    <div class="detail-section">
+                        <h4>에러 메시지</h4>
+                        <div class="detail-content text-danger">${escapeHtml(job.errorMessage)}</div>
+                    </div>
+                    ` : ''}
+
+                    ${job.logs && job.logs.length > 0 ? `
+                    <div class="detail-section">
+                        <h4>로그 (${job.logs.length}건)</h4>
+                        <div class="detail-content">
+${job.logs.map(log => `<div class="log-entry">${escapeHtml(log)}</div>`).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+            } catch (error) {
+                console.error('Error loading job detail:', error);
+                content.innerHTML = '<p class="text-danger">작업 정보를 불러오는데 실패했습니다.</p>';
+            }
+        }
+
+        function closeJobDetail() {
+            const modal = document.getElementById('jobDetailModal');
+            modal.classList.remove('show');
+        }
+
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('jobDetailModal');
+            if (event.target === modal) {
+                closeJobDetail();
             }
         }
 
