@@ -11,6 +11,20 @@ builder.Services.AddSingleton<ProjectManager>();
 builder.Services.AddSingleton<JobManager>();
 builder.Services.AddSingleton<ClaudeCodeExecutor>();
 
+// OS별 Claude 실행 전략 등록
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddSingleton<IClaudeExecutionStrategy, WindowsClaudeExecutionStrategy>();
+}
+else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+{
+    builder.Services.AddSingleton<IClaudeExecutionStrategy, UnixClaudeExecutionStrategy>();
+}
+else
+{
+    throw new PlatformNotSupportedException($"Unsupported operating system: {Environment.OSVersion.Platform}");
+}
+
 // WebSocket 서비스는 RelayServerUrl이 설정되어 있을 때만 실행
 if (!string.IsNullOrEmpty(builder.Configuration["RelayServerUrl"]))
 {

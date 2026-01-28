@@ -8,34 +8,32 @@ public class ClaudeCodeExecutor
 {
     private readonly ILogger<ClaudeCodeExecutor> _logger;
     private readonly JobManager _jobManager;
+    private readonly IClaudeExecutionStrategy _executionStrategy;
 
-    public ClaudeCodeExecutor(ILogger<ClaudeCodeExecutor> logger, JobManager jobManager)
+    public ClaudeCodeExecutor(
+        ILogger<ClaudeCodeExecutor> logger,
+        JobManager jobManager,
+        IClaudeExecutionStrategy executionStrategy)
     {
         _logger = logger;
         _jobManager = jobManager;
+        _executionStrategy = executionStrategy;
     }
 
     public async Task<(bool Success, string Output, string Error)> ExecuteJobAsync(Job job, CancellationToken cancellationToken = default)
     {
+        string? scriptPath = null;
+
         try
         {
             await _jobManager.UpdateJobStatusAsync(job.Id, JobStatus.Running);
             await _jobManager.AddJobLogAsync(job.Id, $"Starting execution for project {job.ProjectName}");
 
-            // Claude Code 실행을 위한 스크립트 생성
-            var scriptPath = await CreateExecutionScriptAsync(job);
+            // OS별 전략을 사용하여 스크립트 생성
+            scriptPath = await _executionStrategy.CreateExecutionScriptAsync(job);
 
-            var psi = new ProcessStartInfo
-            {
-                FileName = "/bin/bash",
-                Arguments = scriptPath,
-                WorkingDirectory = job.ProjectPath,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            // OS별 전략을 사용하여 ProcessStartInfo 생성
+            var psi = _executionStrategy.GetProcessStartInfo(scriptPath, job.ProjectPath);
 
             using var process = new Process { StartInfo = psi };
             var outputBuilder = new StringBuilder();
@@ -82,13 +80,6 @@ public class ClaudeCodeExecutor
                 await _jobManager.AddJobLogAsync(job.Id, $"Job failed with exit code {process.ExitCode}");
             }
 
-            // 스크립트 파일 삭제
-            try
-            {
-                File.Delete(scriptPath);
-            }
-            catch { }
-
             return (success, output, error);
         }
         catch (Exception ex)
@@ -98,49 +89,13 @@ public class ClaudeCodeExecutor
             await _jobManager.AddJobLogAsync(job.Id, $"Exception: {ex.Message}");
             return (false, string.Empty, ex.Message);
         }
-    }
-
-    private async Task<string> CreateExecutionScriptAsync(Job job)
-    {
-        var scriptPath = Path.Combine(Path.GetTempPath(), $"claude_job_{job.Id}.sh");
-
-        var scriptContent = $@"#!/bin/bash
-
-# Job: {job.Id}
-# Project: {job.ProjectName}
-# Description: {job.Description}
-
-cd ""{job.ProjectPath}""
-
-# Claude Code 실행
-# 사용자 요청사항을 Claude에게 전달
-echo ""{EscapeForBash(job.Description)}"" | claude --no-confirm
-
-exit $?
-";
-
-        await File.WriteAllTextAsync(scriptPath, scriptContent);
-
-        // 실행 권한 부여
-        var chmodPsi = new ProcessStartInfo
+        finally
         {
-            FileName = "chmod",
-            Arguments = $"+x {scriptPath}",
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var chmodProcess = Process.Start(chmodPsi);
-        if (chmodProcess != null)
-        {
-            await chmodProcess.WaitForExitAsync();
+            // 스크립트 파일 삭제
+            if (scriptPath != null)
+            {
+                _executionStrategy.DeleteScript(scriptPath);
+            }
         }
-
-        return scriptPath;
-    }
-
-    private string EscapeForBash(string input)
-    {
-        return input.Replace("\"", "\\\"").Replace("$", "\\$").Replace("`", "\\`");
     }
 }
