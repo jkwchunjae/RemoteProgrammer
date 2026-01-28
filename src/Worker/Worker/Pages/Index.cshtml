@@ -34,6 +34,16 @@
                                         </select>
                                     </div>
                                     <div class="form-row">
+                                        <label for="big-task-name" class="form-label">
+                                            브랜치 (큰작업 이름) *
+                                            <small style="display: block; margin-top: 4px; color: #6c757d;">
+                                                같은 이름의 작업은 계속 이어서 진행됩니다
+                                            </small>
+                                        </label>
+                                        <input type="text" class="form-control" id="big-task-name" required
+                                            placeholder="예: feature-login, bugfix-123">
+                                    </div>
+                                    <div class="form-row">
                                         <label for="description" class="form-label">작업 설명</label>
                                         <textarea class="form-control" id="description" rows="8" required
                                             placeholder="Claude에게 요청할 작업 내용을 입력하세요..."></textarea>

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Worker.Models;
 using Worker.Services;
@@ -55,22 +56,49 @@ public class JobsController : ControllerBase
         if (project == null)
             return BadRequest($"Project '{request.ProjectName}' not found");
 
-        var job = await _jobManager.CreateJobAsync(project.Name, project.Path, request.Description);
+        // 브랜치 이름 검증
+        if (!IsValidBranchName(request.BigTaskName))
+            return BadRequest("Invalid branch name. Use only letters, numbers, Korean, -, _, /");
 
-        // 백그라운드에서 작업 실행
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                await _claudeCodeExecutor.ExecuteJobAsync(job);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing job {JobId}", job.Id);
-            }
-        });
+            var job = await _jobManager.CreateJobAsync(project.Name, project.Path, request.Description, request.BigTaskName);
 
-        return CreatedAtAction(nameof(GetJob), new { id = job.Id }, job);
+            // 백그라운드에서 작업 실행
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _claudeCodeExecutor.ExecuteJobAsync(job);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing job {JobId}", job.Id);
+                }
+            });
+
+            return CreatedAtAction(nameof(GetJob), new { id = job.Id }, job);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("in use"))
+        {
+            return Conflict($"Branch '{request.BigTaskName}' is currently in use. Please wait.");
+        }
+    }
+
+    private static bool IsValidBranchName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
+            return false;
+
+        if (!Regex.IsMatch(name, @"^[a-zA-Z0-9가-힣/_-]+$"))
+            return false;
+
+        if (name.Contains("..") || name.Contains("@{") ||
+            name.StartsWith(".") || name.EndsWith(".") ||
+            name.EndsWith(".lock"))
+            return false;
+
+        return true;
     }
 }
 
@@ -78,4 +106,5 @@ public class CreateJobRequest
 {
     public required string ProjectName { get; set; }
     public required string Description { get; set; }
+    public required string BigTaskName { get; set; }
 }

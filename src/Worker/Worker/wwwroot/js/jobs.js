@@ -102,15 +102,43 @@ async function loadJobHistory() {
     }
 }
 
+// 브랜치 이름 검증 함수
+function isValidBranchName(name) {
+    if (!name || name.length > 100) {
+        return false;
+    }
+
+    // 영문, 숫자, 한글, -, _, / 만 허용
+    if (!/^[a-zA-Z0-9가-힣/_-]+$/.test(name)) {
+        return false;
+    }
+
+    // Git 특수 패턴 금지
+    if (name.includes('..') || name.includes('@{') ||
+        name.startsWith('.') || name.endsWith('.') ||
+        name.endsWith('.lock')) {
+        return false;
+    }
+
+    return true;
+}
+
 // 폼 제출 핸들러
 document.getElementById('create-job-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const projectName = document.getElementById('project-select').value;
+    const bigTaskName = document.getElementById('big-task-name').value.trim();
     const description = document.getElementById('description').value;
 
-    if (!projectName || !description) {
-        alert('프로젝트와 작업 설명을 모두 입력해주세요.');
+    if (!projectName || !bigTaskName || !description) {
+        alert('모든 필드를 입력해주세요.');
+        return;
+    }
+
+    // 브랜치 이름 검증
+    if (!isValidBranchName(bigTaskName)) {
+        alert('유효하지 않은 브랜치 이름입니다.\n영문, 숫자, 한글, -, _, / 만 사용 가능합니다.');
         return;
     }
 
@@ -120,11 +148,17 @@ document.getElementById('create-job-form').addEventListener('submit', async (e) 
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ projectName, description })
+            body: JSON.stringify({ projectName, bigTaskName, description })
         });
+
+        if (response.status === 409) {
+            alert(`브랜치 '${bigTaskName}'에서 작업이 진행 중입니다. 잠시 후 다시 시도하세요.`);
+            return;
+        }
 
         if (response.ok) {
             alert('작업이 생성되었습니다.');
+            document.getElementById('big-task-name').value = '';
             document.getElementById('description').value = '';
             loadActiveJobs();
         } else {

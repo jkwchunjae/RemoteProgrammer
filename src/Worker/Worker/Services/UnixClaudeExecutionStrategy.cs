@@ -16,7 +16,7 @@ public class UnixClaudeExecutionStrategy : IClaudeExecutionStrategy
         _logger = logger;
     }
 
-    public async Task<string> CreateExecutionScriptAsync(Job job)
+    public async Task<string> CreateExecutionScriptAsync(Job job, string workingPath)
     {
         var scriptPath = Path.Combine(Path.GetTempPath(), $"claude_job_{job.Id}.sh");
 
@@ -26,8 +26,9 @@ public class UnixClaudeExecutionStrategy : IClaudeExecutionStrategy
 
 # Job: {job.Id}
 # Project: {job.ProjectName}
+# BigTask: {job.BigTaskName}
 
-cd ""{job.ProjectPath}""
+cd ""{workingPath}""
 
 # Claude Code 실행
 # heredoc을 사용하여 여러 줄 텍스트를 안전하게 전달

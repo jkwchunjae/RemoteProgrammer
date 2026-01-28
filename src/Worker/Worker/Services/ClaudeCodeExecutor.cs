@@ -9,32 +9,55 @@ public class ClaudeCodeExecutor
     private readonly ILogger<ClaudeCodeExecutor> _logger;
     private readonly JobManager _jobManager;
     private readonly IClaudeExecutionStrategy _executionStrategy;
+    private readonly GitWorktreeManager _worktreeManager;
 
     public ClaudeCodeExecutor(
         ILogger<ClaudeCodeExecutor> logger,
         JobManager jobManager,
-        IClaudeExecutionStrategy executionStrategy)
+        IClaudeExecutionStrategy executionStrategy,
+        GitWorktreeManager worktreeManager)
     {
         _logger = logger;
         _jobManager = jobManager;
         _executionStrategy = executionStrategy;
+        _worktreeManager = worktreeManager;
     }
 
     public async Task<(bool Success, string Output, string Error)> ExecuteJobAsync(Job job, CancellationToken cancellationToken = default)
     {
         string? scriptPath = null;
+        string? workingPath = null;
 
         try
         {
+            // 1. Worktree 가져오기/생성
+            await _jobManager.AddJobLogAsync(job.Id, $"Getting or creating worktree for branch '{job.BigTaskName}'");
+            var worktree = await _worktreeManager.GetOrCreateWorktreeAsync(
+                job.ProjectName,
+                job.ProjectPath,
+                job.BigTaskName);
+
+            // 2. Worktree 상태를 InUse로 변경 (동시 실행 방지)
+            await _worktreeManager.SetWorktreeStatusAsync(
+                job.ProjectName,
+                job.BigTaskName,
+                WorktreeStatus.InUse);
+
+            // 3. Job에 worktree 경로 기록
+            workingPath = worktree.WorktreePath;
+            job.WorktreePath = workingPath;
+
+            // 4. Job 상태 Running으로 변경
             await _jobManager.UpdateJobStatusAsync(job.Id, JobStatus.Running);
-            await _jobManager.AddJobLogAsync(job.Id, $"Starting execution for project {job.ProjectName}");
+            await _jobManager.AddJobLogAsync(job.Id, $"Starting execution in worktree: {workingPath}");
 
-            // OS별 전략을 사용하여 스크립트 생성
-            scriptPath = await _executionStrategy.CreateExecutionScriptAsync(job);
+            // 5. OS별 전략을 사용하여 스크립트 생성 (worktree 경로 사용)
+            scriptPath = await _executionStrategy.CreateExecutionScriptAsync(job, workingPath);
 
-            // OS별 전략을 사용하여 ProcessStartInfo 생성
-            var psi = _executionStrategy.GetProcessStartInfo(scriptPath, job.ProjectPath);
+            // 6. OS별 전략을 사용하여 ProcessStartInfo 생성 (worktree 경로를 WorkingDirectory로)
+            var psi = _executionStrategy.GetProcessStartInfo(scriptPath, workingPath);
 
+            // 7. 실행
             using var process = new Process { StartInfo = psi };
             var outputBuilder = new StringBuilder();
             var errorBuilder = new StringBuilder();
@@ -91,6 +114,22 @@ public class ClaudeCodeExecutor
         }
         finally
         {
+            // 8. Worktree 상태를 Active로 복구
+            if (workingPath != null)
+            {
+                try
+                {
+                    await _worktreeManager.SetWorktreeStatusAsync(
+                        job.ProjectName,
+                        job.BigTaskName,
+                        WorktreeStatus.Active);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error restoring worktree status for {JobId}", job.Id);
+                }
+            }
+
             // 스크립트 파일 삭제
             if (scriptPath != null)
             {

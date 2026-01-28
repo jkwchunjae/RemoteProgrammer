@@ -10,6 +10,7 @@ public class JobRequest
 {
     public required string JobId { get; set; }
     public required string ProjectName { get; set; }
+    public required string BigTaskName { get; set; }
     public required string Description { get; set; }
 }
 

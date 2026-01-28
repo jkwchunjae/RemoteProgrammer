@@ -12,8 +12,9 @@ public interface IClaudeExecutionStrategy
     /// 작업 실행을 위한 스크립트를 생성합니다
     /// </summary>
     /// <param name="job">실행할 작업</param>
+    /// <param name="workingPath">실제 작업 경로 (worktree 경로 또는 원본 경로)</param>
     /// <returns>스크립트 파일 경로</returns>
-    Task<string> CreateExecutionScriptAsync(Job job);
+    Task<string> CreateExecutionScriptAsync(Job job, string workingPath);
 
     /// <summary>
     /// 스크립트 실행을 위한 ProcessStartInfo를 생성합니다

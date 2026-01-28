@@ -16,7 +16,7 @@ public class WindowsClaudeExecutionStrategy : IClaudeExecutionStrategy
         _logger = logger;
     }
 
-    public async Task<string> CreateExecutionScriptAsync(Job job)
+    public async Task<string> CreateExecutionScriptAsync(Job job, string workingPath)
     {
         var scriptPath = Path.Combine(Path.GetTempPath(), $"claude_job_{job.Id}.ps1");
 
@@ -24,8 +24,9 @@ public class WindowsClaudeExecutionStrategy : IClaudeExecutionStrategy
         // Here-String (@' '@)을 사용하여 여러 줄 텍스트를 안전하게 전달
         var scriptContent = $@"# Job: {job.Id}
 # Project: {job.ProjectName}
+# BigTask: {job.BigTaskName}
 
-Set-Location ""{job.ProjectPath}""
+Set-Location ""{workingPath}""
 
 # Claude Code 실행
 # Here-String을 사용하여 여러 줄 텍스트를 안전하게 전달

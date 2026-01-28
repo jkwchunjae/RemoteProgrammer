@@ -31,7 +31,7 @@ public class JobManager
         LoadActiveJobs();
     }
 
-    public async Task<Job> CreateJobAsync(string projectName, string projectPath, string description)
+    public async Task<Job> CreateJobAsync(string projectName, string projectPath, string description, string bigTaskName)
     {
         await _lock.WaitAsync();
         try
@@ -42,6 +42,7 @@ public class JobManager
                 ProjectName = projectName,
                 ProjectPath = projectPath,
                 Description = description,
+                BigTaskName = bigTaskName,
                 Status = JobStatus.Pending,
                 CreatedAt = DateTime.UtcNow
             };
@@ -49,7 +50,7 @@ public class JobManager
             _activeJobs[job.Id] = job;
             await SaveJobStatusAsync(job);
 
-            _logger.LogInformation("Created job {JobId} for project {ProjectName}", job.Id, projectName);
+            _logger.LogInformation("Created job {JobId} for project {ProjectName} on branch {BigTaskName}", job.Id, projectName, bigTaskName);
             return job;
         }
         finally

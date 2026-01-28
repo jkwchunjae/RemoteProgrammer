@@ -46,7 +46,9 @@ async function showJobDetail(jobId, isHistory = false) {
                 <div class="detail-content">
 작업 ID: ${escapeHtml(job.id)}
 프로젝트: ${escapeHtml(job.projectName)}
-경로: ${escapeHtml(job.projectPath)}
+브랜치 (큰작업): ${job.bigTaskName ? escapeHtml(job.bigTaskName) : 'N/A'}
+프로젝트 경로: ${escapeHtml(job.projectPath)}
+${job.worktreePath ? `작업 경로 (worktree): ${escapeHtml(job.worktreePath)}` : ''}
 상태: <span class="badge bg-${getStatusColor(job.status)}">${job.status}</span>
 생성 시간: ${job.createdAt ? new Date(job.createdAt).toLocaleString('ko-KR') : 'N/A'}
 시작 시간: ${job.startedAt ? new Date(job.startedAt).toLocaleString('ko-KR') : 'N/A'}

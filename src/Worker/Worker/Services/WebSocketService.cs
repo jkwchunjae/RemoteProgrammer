@@ -132,7 +132,7 @@ public class WebSocketService : BackgroundService
                 return;
             }
 
-            var job = await _jobManager.CreateJobAsync(project.Name, project.Path, jobRequest.Description);
+            var job = await _jobManager.CreateJobAsync(project.Name, project.Path, jobRequest.Description, jobRequest.BigTaskName);
 
             // 백그라운드에서 작업 실행
             _ = Task.Run(async () =>

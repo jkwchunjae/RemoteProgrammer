@@ -6,6 +6,8 @@ public class Job
     public required string ProjectName { get; set; }
     public required string ProjectPath { get; set; }
     public required string Description { get; set; }
+    public required string BigTaskName { get; set; }
+    public string? WorktreePath { get; set; }
     public JobStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? StartedAt { get; set; }
