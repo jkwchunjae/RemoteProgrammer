@@ -21,10 +21,13 @@ Worker/
 │   ├── Job.cs          # 작업 정보
 │   └── WorkerMessage.cs # WebSocket 메시지
 ├── Services/            # 핵심 서비스
-│   ├── ProjectManager.cs       # 프로젝트 관리
-│   ├── JobManager.cs           # 작업 상태 관리
-│   ├── ClaudeCodeExecutor.cs   # Claude Code 실행
-│   └── WebSocketService.cs     # 중계 서버 통신
+│   ├── ProjectManager.cs                # 프로젝트 관리
+│   ├── JobManager.cs                    # 작업 상태 관리
+│   ├── ClaudeCodeExecutor.cs            # Claude Code 실행 오케스트레이터
+│   ├── IClaudeExecutionStrategy.cs      # OS별 실행 전략 인터페이스
+│   ├── WindowsClaudeExecutionStrategy.cs # Windows 실행 전략
+│   ├── UnixClaudeExecutionStrategy.cs   # Unix 실행 전략 (Linux, macOS)
+│   └── WebSocketService.cs              # 중계 서버 통신
 ├── Controllers/         # API 컨트롤러
 │   ├── JobsController.cs
 │   └── ProjectsController.cs
@@ -182,30 +185,56 @@ curl -X POST http://localhost:5000/api/jobs \
 
 ## Claude Code 실행 방식
 
+Worker는 **멀티 플랫폼**을 지원하며, 실행 중인 OS에 따라 자동으로 적절한 스크립트를 생성합니다.
+
 작업이 요청되면 다음과 같은 프로세스로 실행됩니다:
 
-1. 작업 정보를 기반으로 Bash 스크립트 생성
-2. 스크립트에서 프로젝트 경로로 이동
-3. `echo "작업설명" | claude --no-confirm` 명령으로 Claude Code 실행
-4. 실행 결과를 실시간으로 로그에 기록
-5. 완료 후 결과를 중계 서버로 전송
+1. OS를 감지하여 적절한 실행 전략 선택 (Windows/Unix)
+2. 작업 정보를 기반으로 OS별 스크립트 생성
+3. 스크립트에서 프로젝트 경로로 이동
+4. 여러 줄 텍스트를 안전하게 Claude Code에 전달
+5. 실행 결과를 실시간으로 로그에 기록
+6. 완료 후 결과를 중계 서버로 전송
 
-### 생성되는 스크립트 예시
+### Unix (Linux, macOS) 스크립트 예시
 
 ```bash
 #!/bin/bash
 
 # Job: abc-123
 # Project: Project1
-# Description: Add user authentication feature
 
 cd "/workspace/Project1"
 
 # Claude Code 실행
-echo "Add user authentication feature" | claude --no-confirm
+# heredoc을 사용하여 여러 줄 텍스트를 안전하게 전달
+claude <<'CLAUDE_INPUT_EOF'
+Add user authentication feature
+CLAUDE_INPUT_EOF
 
 exit $?
 ```
+
+### Windows 스크립트 예시
+
+```powershell
+# Job: abc-123
+# Project: Project1
+
+Set-Location "C:\workspace\Project1"
+
+# Claude Code 실행
+# Here-String을 사용하여 여러 줄 텍스트를 안전하게 전달
+$description = @'
+Add user authentication feature
+'@
+
+$description | claude
+
+exit $LASTEXITCODE
+```
+
+**전략 패턴**: `IClaudeExecutionStrategy` 인터페이스를 통해 OS별 실행 로직이 분리되어 있으며, Program.cs에서 자동으로 적절한 구현체가 주입됩니다.
 
 ## 로컬 웹 인터페이스
 
@@ -213,17 +242,32 @@ exit $?
 
 1. **프로젝트 목록 확인**: 현재 관리 중인 모든 프로젝트 보기
 2. **진행 중인 작업 모니터링**: 실시간으로 작업 상태 확인
-3. **새 작업 생성**: 웹에서 직접 작업 요청
+3. **새 작업 생성**: 웹에서 직접 작업 요청 (여러 줄 입력 지원)
 4. **작업 이력 조회**: 과거 실행한 작업들의 결과 확인
+5. **작업 상세 정보**: 작업 항목 클릭 시 모달로 전체 정보 확인
+   - 작업 설명, 결과, 에러 메시지, 로그 전체 표시
+   - 긴 텍스트도 스크롤하여 전체 내용 확인 가능
 
 페이지는 5초마다 자동으로 새로고침되어 최신 상태를 표시합니다.
+
+### UI 개선 사항 (2026-01-28)
+- 모던한 디자인 적용 (site.css)
+- 반응형 레이아웃 (모바일 지원)
+- 작업 상태별 색상 구분 (성공/실패/진행중/대기)
+- 모달 팝업으로 상세 정보 표시
 
 ## 주의사항
 
 1. **Claude CLI 필요**: Claude Code CLI가 설치되어 있어야 합니다
-2. **Git 저장소**: 관리할 프로젝트는 모두 Git 저장소여야 합니다
-3. **경로 권한**: WorkspacePath에 읽기/쓰기 권한이 있어야 합니다
-4. **자동 실행**: `--no-confirm` 옵션으로 Claude가 자동으로 실행됩니다
+2. **지원 OS**: Windows, Linux, macOS에서 실행 가능
+   - Windows: PowerShell 5.1 이상 필요
+   - Linux/macOS: Bash 셸 필요
+3. **Git 저장소**: 관리할 프로젝트는 모두 Git 저장소여야 합니다
+4. **경로 권한**: WorkspacePath에 읽기/쓰기 권한이 있어야 합니다
+5. **절대 경로**: WorkspacePath는 자동으로 절대 경로로 변환됩니다
+6. **여러 줄 입력**:
+   - Unix: heredoc 방식 사용
+   - Windows: PowerShell Here-String 방식 사용
 
 ## 개발 시 참고사항
 
@@ -231,3 +275,36 @@ exit $?
 - WebSocket 서비스는 `RelayServerUrl`이 설정되어 있을 때만 활성화
 - 로컬 테스트는 웹 인터페이스를 통해 가능
 - 모든 작업은 비동기로 실행되며, 여러 작업을 동시에 처리 가능
+- **멀티 플랫폼 설계**: 전략 패턴을 사용하여 OS별 실행 로직이 깔끔하게 분리됨
+  - 새로운 OS 지원 추가 시 `IClaudeExecutionStrategy`를 구현하면 됨
+  - DI 컨테이너에서 자동으로 적절한 전략 선택
+
+## 변경 이력
+
+### 2026-01-28
+
+#### 첫 번째 개선
+- **여러 줄 입력 오류 수정**: bash heredoc 방식으로 변경하여 여러 줄 작업 설명 안전하게 처리
+- **--no-confirm 옵션 제거**: heredoc 방식 사용으로 불필요해짐
+- **절대 경로 사용**: Path.GetFullPath()로 모든 경로를 절대 경로로 변환
+- **웹 UI 개선**:
+  - CSS 스타일 파일 추가 (wwwroot/css/site.css)
+  - 작업 상세 정보 모달 추가
+  - 긴 텍스트 전체 표시 (스크롤)
+  - 작업 결과, 에러 메시지, 로그 모두 표시
+  - 반응형 디자인 적용
+
+#### 멀티 플랫폼 지원
+- **목적**: Windows, Linux, macOS에서 모두 실행 가능하도록 개선
+- **설계**: 전략 패턴 (Strategy Pattern) 적용
+- **신규 파일**:
+  - `IClaudeExecutionStrategy.cs` - OS별 실행 전략 인터페이스
+  - `WindowsClaudeExecutionStrategy.cs` - PowerShell 기반 실행
+  - `UnixClaudeExecutionStrategy.cs` - Bash 기반 실행
+- **수정 파일**:
+  - `ClaudeCodeExecutor.cs` - 전략 주입 방식으로 리팩토링
+  - `Program.cs` - OS 감지 및 자동 전략 선택
+- **기술적 특징**:
+  - 다형성을 활용한 깔끔한 코드 분리
+  - 새로운 OS 지원 추가 용이
+  - 단일 책임 원칙 (SRP) 준수
