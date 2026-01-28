@@ -14,13 +14,19 @@ public class JobManager
 
     public JobManager(IConfiguration configuration, ILogger<JobManager> logger)
     {
-        _workspacePath = configuration["WorkspacePath"] ?? "/workspace";
+        var configuredPath = configuration["WorkspacePath"] ?? "/workspace";
+        // 절대경로로 변환
+        _workspacePath = Path.GetFullPath(configuredPath);
         _jobStatusPath = Path.Combine(_workspacePath, "JobStatus");
         _jobHistoryPath = Path.Combine(_workspacePath, "JobHistory");
         _logger = logger;
 
         Directory.CreateDirectory(_jobStatusPath);
         Directory.CreateDirectory(_jobHistoryPath);
+
+        _logger.LogInformation("JobManager initialized - Workspace: {WorkspacePath}", _workspacePath);
+        _logger.LogInformation("JobStatus path: {JobStatusPath}", _jobStatusPath);
+        _logger.LogInformation("JobHistory path: {JobHistoryPath}", _jobHistoryPath);
 
         LoadActiveJobs();
     }

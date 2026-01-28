@@ -10,8 +10,11 @@ public class ProjectManager
 
     public ProjectManager(IConfiguration configuration, ILogger<ProjectManager> logger)
     {
-        _workspacePath = configuration["WorkspacePath"] ?? "/workspace";
+        var configuredPath = configuration["WorkspacePath"] ?? "/workspace";
+        // 절대경로로 변환
+        _workspacePath = Path.GetFullPath(configuredPath);
         _logger = logger;
+        _logger.LogInformation("Workspace path initialized: {WorkspacePath}", _workspacePath);
     }
 
     public async Task<List<Project>> GetProjectsAsync()
