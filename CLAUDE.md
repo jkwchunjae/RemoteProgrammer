@@ -81,6 +81,13 @@ Web으로 만든 이유는 이 프로그램을 단독으로 사용했을 때,
 테스트 및 사용성을 편하게 하기 위해서 만듦.
 작업 요청 서버에 연결하지 않아도 로컬에서 웹페이지로 작업 요청 테스트를 하기 위함.
 
+**로컬 웹 테스트 UI**:
+  - 좌측 사이드바 네비게이션: "작업 관리", "프로젝트" 메뉴 제공
+  - Split View 레이아웃: 좌측(작업 생성/목록), 우측(상세 정보)
+  - 탭 메뉴: "새 작업", "진행 중", "작업 이력" 탭으로 구성
+  - 작업 항목 클릭 시 우측에 상세 정보 표시 (설명, 결과, 에러, 로그)
+  - JavaScript 파일 분리: `projects.js`, `jobs.js`, `job-detail.js`
+
 ## 프로그램의 목적
  - 외부 작업 요청 서버로부터 작업을 받아와서 다른 디렉토리에서 claude code를 활용해 작업을 수행시킨다.
  - 한 번에 여러 디렉토리에 작업을 요청할 수 있어야 한다.
@@ -105,6 +112,8 @@ Web으로 만든 이유는 이 프로그램을 단독으로 사용했을 때,
   - /Project1
   - /Project2
 
+**경로 관리**: 모든 프로젝트 경로는 절대경로로 변환하여 사용함. `Path.GetFullPath()`를 사용하여 경로 혼동을 방지.
+
 ## 프로젝트 관리
   - worker는 다른 프로젝트가 무엇이 있는지,
     어떤 작업을 수행 중인지
@@ -115,7 +124,14 @@ Web으로 만든 이유는 이 프로그램을 단독으로 사용했을 때,
 
 ## 작업 진행
   - 서버로 부터 작업 요청을 받으면 해당 폴더에서 claude code를 사용해서 작업을 실행 함.
-  - 별도의 bash script를 사용해서 작업 실행.
+  - 멀티 플랫폼 지원: Windows(PowerShell), Linux/macOS(Bash) 모두 지원
+      - 전략 패턴 사용: `IClaudeExecutionStrategy` 인터페이스
+      - `WindowsClaudeExecutionStrategy`: PowerShell 스크립트 (.ps1)
+      - `UnixClaudeExecutionStrategy`: Bash 스크립트 (.sh)
+      - Program.cs에서 OS 자동 감지하여 적절한 전략 주입
+  - 작업 설명 전달: heredoc 방식으로 여러 줄 텍스트를 안전하게 Claude Code에 전달
+      - bash heredoc 또는 PowerShell here-string 사용
+      - 여러 줄 입력 시 각 줄이 별도 명령으로 실행되는 오류 방지
   - 중간중간 사용자가 정해야 할 결정사항이 있으면 중계서버를 통해서 사용자에게 문의할 수 있어야 함.
       사용자가 답변한 내용을 바탕으로 내용을 진행.
 
@@ -123,47 +139,3 @@ Web으로 만든 이유는 이 프로그램을 단독으로 사용했을 때,
   - 사용자에게 작업 결과를 요약해서 공유.
   - 사용자는 결과를 듣고 수정사항을 지시할 수 있음.
   - 개발 서버는 수정 사항을 요청 받으면 이어서 작업을 진행.
-
-# 개발 이력
-
-## 2026-01-28 - Worker 개선
-
-### 1. description 여러 줄 입력 오류 수정
-- **문제**: 작업 설명에 여러 줄을 입력하면 bash 스크립트에서 각 줄이 별도 명령으로 실행되는 오류 발생
-- **해결**: bash heredoc을 사용하여 여러 줄 텍스트를 안전하게 Claude Code에 전달
-- **변경 파일**: `src/Worker/Worker/Services/ClaudeCodeExecutor.cs`
-
-### 2. --no-confirm 옵션 제거
-- **문제**: `claude --no-confirm` 옵션이 존재하지 않음
-- **해결**: heredoc 방식으로 변경하면서 옵션 불필요해짐
-- **변경 파일**: `src/Worker/Worker/Services/ClaudeCodeExecutor.cs`
-
-### 3. Worker 프로젝트 경로 절대경로 사용
-- **문제**: 상대경로 사용으로 인한 경로 혼동 가능성
-- **해결**: `Path.GetFullPath()`를 사용하여 모든 경로를 절대경로로 변환
-- **변경 파일**: `ProjectManager.cs`, `JobManager.cs`
-
-### 4. HTML 테스트 페이지 개선
-- **목적**: 로컬 테스트용 웹 인터페이스 사용성 개선
-- **개선 사항**:
-  - 모던한 UI 디자인 추가 (site.css)
-  - 작업 항목 클릭 시 모달로 상세 정보 표시
-  - 긴 문자열을 자르지 않고 전체 표시
-  - 작업 설명, 결과, 에러 메시지, 로그 모두 표시
-
-### 5. 멀티 플랫폼 지원 (Windows, Linux, macOS)
-- **목적**: WSL뿐만 아니라 Windows, macOS에서도 실행 가능하도록 개선
-- **설계**: 다형성을 활용한 전략 패턴 적용
-- **구현 내용**:
-  - `IClaudeExecutionStrategy` 인터페이스 정의
-  - `WindowsClaudeExecutionStrategy`: PowerShell 스크립트 (.ps1) 사용
-  - `UnixClaudeExecutionStrategy`: Bash 스크립트 (.sh) 사용 (Linux, macOS)
-  - `ClaudeCodeExecutor`: 전략 패턴을 통해 OS별 실행 로직 분리
-  - Program.cs에서 OS 감지하여 적절한 전략 자동 주입
-- **변경 파일**:
-  - 신규: `IClaudeExecutionStrategy.cs` (인터페이스)
-  - 신규: `WindowsClaudeExecutionStrategy.cs`
-  - 신규: `UnixClaudeExecutionStrategy.cs`
-  - 수정: `ClaudeCodeExecutor.cs` (전략 주입 방식으로 리팩토링)
-  - 수정: `Program.cs` (DI 설정)
-
