@@ -1,0 +1,28 @@
+@page
+@model ProjectsModel
+@{
+    ViewData["Title"] = "프로젝트 관리";
+}
+
+<div class="page-container">
+    <div class="page-header">
+        <h2>프로젝트 관리</h2>
+    </div>
+
+    <div class="page-content">
+        <div class="card" style="height: 100%;">
+            <div class="card-header">
+                <h5>등록된 프로젝트</h5>
+            </div>
+            <div class="card-body scrollable">
+                <div id="projects-list">
+                    <p class="text-muted">로딩 중...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/projects.js" asp-append-version="true"></script>
+}

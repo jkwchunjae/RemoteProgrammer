@@ -1,322 +1,88 @@
 @page
 @model IndexModel
 @{
-    ViewData["Title"] = "Worker Dashboard";
+    ViewData["Title"] = "작업 관리";
 }
 
-<div class="container mt-4">
-    <h1>Remote Programmer Worker</h1>
-    <p class="lead">로컬 테스트용 웹 인터페이스</p>
-
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>프로젝트 목록</h5>
-                </div>
-                <div class="card-body">
-                    <div id="projects-list">
-                        <p class="text-muted">로딩 중...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>진행 중인 작업</h5>
-                </div>
-                <div class="card-body">
-                    <div id="active-jobs">
-                        <p class="text-muted">로딩 중...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="page-container">
+    <div class="page-header">
+        <h2>작업 관리</h2>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>새 작업 생성</h5>
-                </div>
-                <div class="card-body">
-                    <form id="create-job-form">
-                        <div class="mb-3">
-                            <label for="project-select" class="form-label">프로젝트</label>
-                            <select class="form-select" id="project-select" required>
-                                <option value="">프로젝트 선택...</option>
-                            </select>
+    <div class="page-content">
+        <div class="split-container">
+            <!-- 좌측: 작업 목록 및 생성 폼 -->
+            <div class="split-left">
+                <div class="card" style="height: 100%;">
+                    <!-- 탭 메뉴 -->
+                    <div class="tab-menu">
+                        <button class="tab-button active" data-tab="create">새 작업</button>
+                        <button class="tab-button" data-tab="active">진행 중</button>
+                        <button class="tab-button" data-tab="history">작업 이력</button>
+                    </div>
+
+                    <!-- 탭 컨텐츠 -->
+                    <div class="tab-content-wrapper">
+                        <!-- 새 작업 생성 -->
+                        <div class="tab-content active" id="tab-create">
+                            <div class="tab-content-body">
+                                <form id="create-job-form">
+                                    <div class="form-row">
+                                        <label for="project-select" class="form-label">프로젝트</label>
+                                        <select class="form-select" id="project-select" required>
+                                            <option value="">프로젝트 선택...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-row">
+                                        <label for="description" class="form-label">작업 설명</label>
+                                        <textarea class="form-control" id="description" rows="8" required
+                                            placeholder="Claude에게 요청할 작업 내용을 입력하세요..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-block">작업 시작</button>
+                                </form>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">작업 설명</label>
-                            <textarea class="form-control" id="description" rows="4" required
-                                placeholder="Claude에게 요청할 작업 내용을 입력하세요..."></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">작업 시작</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>작업 이력</h5>
-                </div>
-                <div class="card-body">
-                    <div id="job-history">
-                        <p class="text-muted">로딩 중...</p>
+                        <!-- 진행 중인 작업 -->
+                        <div class="tab-content" id="tab-active">
+                            <div class="tab-content-body scrollable">
+                                <div id="active-jobs">
+                                    <p class="text-muted">로딩 중...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 작업 이력 -->
+                        <div class="tab-content" id="tab-history">
+                            <div class="tab-content-body scrollable">
+                                <div id="job-history">
+                                    <p class="text-muted">로딩 중...</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- 작업 상세 정보 모달 -->
-<div id="jobDetailModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>작업 상세 정보</h3>
-            <button class="close-button" onclick="closeJobDetail()">&times;</button>
-        </div>
-        <div class="modal-body" id="jobDetailContent">
-            <p class="text-muted">로딩 중...</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeJobDetail()">닫기</button>
+            <!-- 우측: 작업 상세 정보 -->
+            <div class="split-right">
+                <div id="job-detail-panel" class="job-detail-panel">
+                    <div class="job-detail-header">
+                        <h5>작업 상세 정보</h5>
+                        <button class="close-button" onclick="closeJobDetail()">&times;</button>
+                    </div>
+                    <div class="job-detail-body" id="job-detail-content">
+                        <div class="job-detail-placeholder">
+                            <p>작업을 선택하면 상세 정보가 표시됩니다</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script>
-        async function loadProjects() {
-            try {
-                const response = await fetch('/api/projects');
-                const projects = await response.json();
-
-                const projectsList = document.getElementById('projects-list');
-                const projectSelect = document.getElementById('project-select');
-
-                if (projects.length === 0) {
-                    projectsList.innerHTML = '<p class="text-muted">프로젝트가 없습니다.</p>';
-                } else {
-                    projectsList.innerHTML = '<ul class="list-group">' +
-                        projects.map(p => `<li class="list-group-item">
-                            <strong>${p.name}</strong><br/>
-                            <small class="text-muted">${p.path}</small><br/>
-                            <small>Branch: ${p.gitBranch || 'N/A'}</small>
-                        </li>`).join('') +
-                        '</ul>';
-
-                    projectSelect.innerHTML = '<option value="">프로젝트 선택...</option>' +
-                        projects.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-                }
-            } catch (error) {
-                console.error('Error loading projects:', error);
-                document.getElementById('projects-list').innerHTML =
-                    '<p class="text-danger">프로젝트 로드 실패</p>';
-            }
-        }
-
-        async function loadActiveJobs() {
-            try {
-                const response = await fetch('/api/jobs');
-                const jobs = await response.json();
-
-                const activeJobs = document.getElementById('active-jobs');
-
-                if (jobs.length === 0) {
-                    activeJobs.innerHTML = '<p class="text-muted">진행 중인 작업이 없습니다.</p>';
-                } else {
-                    activeJobs.innerHTML = '<ul class="list-group">' +
-                        jobs.map(j => `<li class="list-group-item clickable" onclick="showJobDetail('${j.id}')">
-                            <strong>${escapeHtml(j.projectName)}</strong> -
-                            <span class="badge bg-${getStatusColor(j.status)}">${j.status}</span><br/>
-                            <small>${escapeHtml(j.description.substring(0, 100))}${j.description.length > 100 ? '...' : ''}</small>
-                        </li>`).join('') +
-                        '</ul>';
-                }
-            } catch (error) {
-                console.error('Error loading active jobs:', error);
-            }
-        }
-
-        async function loadJobHistory() {
-            try {
-                const response = await fetch('/api/jobs/history?limit=10');
-                const jobs = await response.json();
-
-                const jobHistory = document.getElementById('job-history');
-
-                if (jobs.length === 0) {
-                    jobHistory.innerHTML = '<p class="text-muted">작업 이력이 없습니다.</p>';
-                } else {
-                    jobHistory.innerHTML = '<ul class="list-group">' +
-                        jobs.map(j => `<li class="list-group-item clickable" onclick="showJobDetail('${j.id}', true)">
-                            <strong>${escapeHtml(j.projectName)}</strong> -
-                            <span class="badge bg-${getStatusColor(j.status)}">${j.status}</span><br/>
-                            <small>${escapeHtml(j.description.substring(0, 100))}${j.description.length > 100 ? '...' : ''}</small><br/>
-                            <small class="text-muted">${new Date(j.createdAt).toLocaleString('ko-KR')}</small>
-                        </li>`).join('') +
-                        '</ul>';
-                }
-            } catch (error) {
-                console.error('Error loading job history:', error);
-            }
-        }
-
-        function getStatusColor(status) {
-            switch (status) {
-                case 'Completed': return 'success';
-                case 'Failed': return 'danger';
-                case 'Running': return 'primary';
-                case 'Pending': return 'secondary';
-                case 'WaitingForUserInput': return 'warning';
-                default: return 'secondary';
-            }
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        async function showJobDetail(jobId, isHistory = false) {
-            const modal = document.getElementById('jobDetailModal');
-            const content = document.getElementById('jobDetailContent');
-
-            modal.classList.add('show');
-            content.innerHTML = '<p class="text-muted">로딩 중...</p>';
-
-            try {
-                const endpoint = isHistory ? `/api/jobs/history?limit=100` : `/api/jobs/${jobId}`;
-                const response = await fetch(endpoint);
-
-                let job;
-                if (isHistory) {
-                    const jobs = await response.json();
-                    job = jobs.find(j => j.id === jobId);
-                } else {
-                    job = await response.json();
-                }
-
-                if (!job) {
-                    content.innerHTML = '<p class="text-danger">작업을 찾을 수 없습니다.</p>';
-                    return;
-                }
-
-                content.innerHTML = `
-                    <div class="detail-section">
-                        <h4>기본 정보</h4>
-                        <div class="detail-content">
-작업 ID: ${escapeHtml(job.id)}
-프로젝트: ${escapeHtml(job.projectName)}
-경로: ${escapeHtml(job.projectPath)}
-상태: ${job.status}
-생성 시간: ${job.createdAt ? new Date(job.createdAt).toLocaleString('ko-KR') : 'N/A'}
-시작 시간: ${job.startedAt ? new Date(job.startedAt).toLocaleString('ko-KR') : 'N/A'}
-완료 시간: ${job.completedAt ? new Date(job.completedAt).toLocaleString('ko-KR') : 'N/A'}
-                        </div>
-                    </div>
-
-                    <div class="detail-section">
-                        <h4>작업 설명</h4>
-                        <div class="detail-content">${escapeHtml(job.description)}</div>
-                    </div>
-
-                    ${job.result ? `
-                    <div class="detail-section">
-                        <h4>작업 결과</h4>
-                        <div class="detail-content">${escapeHtml(job.result)}</div>
-                    </div>
-                    ` : ''}
-
-                    ${job.errorMessage ? `
-                    <div class="detail-section">
-                        <h4>에러 메시지</h4>
-                        <div class="detail-content text-danger">${escapeHtml(job.errorMessage)}</div>
-                    </div>
-                    ` : ''}
-
-                    ${job.logs && job.logs.length > 0 ? `
-                    <div class="detail-section">
-                        <h4>로그 (${job.logs.length}건)</h4>
-                        <div class="detail-content">
-${job.logs.map(log => `<div class="log-entry">${escapeHtml(log)}</div>`).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                `;
-            } catch (error) {
-                console.error('Error loading job detail:', error);
-                content.innerHTML = '<p class="text-danger">작업 정보를 불러오는데 실패했습니다.</p>';
-            }
-        }
-
-        function closeJobDetail() {
-            const modal = document.getElementById('jobDetailModal');
-            modal.classList.remove('show');
-        }
-
-        // 모달 외부 클릭 시 닫기
-        window.onclick = function(event) {
-            const modal = document.getElementById('jobDetailModal');
-            if (event.target === modal) {
-                closeJobDetail();
-            }
-        }
-
-        document.getElementById('create-job-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const projectName = document.getElementById('project-select').value;
-            const description = document.getElementById('description').value;
-
-            if (!projectName || !description) {
-                alert('프로젝트와 작업 설명을 모두 입력해주세요.');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/jobs', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ projectName, description })
-                });
-
-                if (response.ok) {
-                    alert('작업이 생성되었습니다.');
-                    document.getElementById('description').value = '';
-                    loadActiveJobs();
-                } else {
-                    const error = await response.text();
-                    alert('작업 생성 실패: ' + error);
-                }
-            } catch (error) {
-                console.error('Error creating job:', error);
-                alert('작업 생성 중 오류가 발생했습니다.');
-            }
-        });
-
-        // 초기 로드 및 자동 새로고침
-        loadProjects();
-        loadActiveJobs();
-        loadJobHistory();
-
-        setInterval(() => {
-            loadActiveJobs();
-            loadJobHistory();
-        }, 5000);
-    </script>
+    <script src="~/js/jobs.js" asp-append-version="true"></script>
+    <script src="~/js/job-detail.js" asp-append-version="true"></script>
 }
