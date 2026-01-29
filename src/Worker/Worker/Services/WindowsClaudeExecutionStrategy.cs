@@ -28,13 +28,25 @@ public class WindowsClaudeExecutionStrategy : IClaudeExecutionStrategy
 
 Set-Location ""{workingPath}""
 
+# Context instruction if memory.md exists
+$contextInstruction = """"
+if (Test-Path "".\memory.md"") {{
+    $contextInstruction = @'
+
+IMPORTANT: Before starting this task, READ THE FILE memory.md in the current directory.
+It contains the history of previous jobs in this branch and important context.
+
+'@
+}}
+
 # Claude Code 실행
 # Here-String을 사용하여 여러 줄 텍스트를 안전하게 전달
 $description = @'
 {job.Description}
 '@
 
-$description | claude --allow-dangerously-skip-permissions --dangerously-skip-permissions
+$fullDescription = $contextInstruction + $description
+$fullDescription | claude --allow-dangerously-skip-permissions --dangerously-skip-permissions
 
 exit $LASTEXITCODE
 ";

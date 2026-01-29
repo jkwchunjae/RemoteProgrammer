@@ -10,17 +10,20 @@ public class ClaudeCodeExecutor
     private readonly JobManager _jobManager;
     private readonly IClaudeExecutionStrategy _executionStrategy;
     private readonly GitWorktreeManager _worktreeManager;
+    private readonly MemoryManager _memoryManager;
 
     public ClaudeCodeExecutor(
         ILogger<ClaudeCodeExecutor> logger,
         JobManager jobManager,
         IClaudeExecutionStrategy executionStrategy,
-        GitWorktreeManager worktreeManager)
+        GitWorktreeManager worktreeManager,
+        MemoryManager memoryManager)
     {
         _logger = logger;
         _jobManager = jobManager;
         _executionStrategy = executionStrategy;
         _worktreeManager = worktreeManager;
+        _memoryManager = memoryManager;
     }
 
     public async Task<(bool Success, string Output, string Error)> ExecuteJobAsync(Job job, CancellationToken cancellationToken = default)
@@ -46,6 +49,13 @@ public class ClaudeCodeExecutor
             // 3. Job에 worktree 경로 기록
             workingPath = worktree.WorktreePath;
             job.WorktreePath = workingPath;
+
+            // 3.5. memory.md 초기화 (첫 작업인 경우)
+            if (!await _memoryManager.MemoryFileExistsAsync(workingPath))
+            {
+                await _memoryManager.InitializeMemoryFileAsync(worktree);
+                await _jobManager.AddJobLogAsync(job.Id, "Initialized memory.md for this branch");
+            }
 
             // 4. Job 상태 Running으로 변경
             await _jobManager.UpdateJobStatusAsync(job.Id, JobStatus.Running);
@@ -96,11 +106,31 @@ public class ClaudeCodeExecutor
             {
                 await _jobManager.UpdateJobStatusAsync(job.Id, JobStatus.Completed, output);
                 await _jobManager.AddJobLogAsync(job.Id, "Job completed successfully");
+
+                // memory.md에 작업 결과 추가
+                try
+                {
+                    await _memoryManager.AppendJobResultAsync(job, workingPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update memory.md for job {JobId}", job.Id);
+                }
             }
             else
             {
                 await _jobManager.UpdateJobStatusAsync(job.Id, JobStatus.Failed, errorMessage: error);
                 await _jobManager.AddJobLogAsync(job.Id, $"Job failed with exit code {process.ExitCode}");
+
+                // memory.md에 실패 기록 추가 (에러도 중요한 컨텍스트)
+                try
+                {
+                    await _memoryManager.AppendJobResultAsync(job, workingPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update memory.md for job {JobId}", job.Id);
+                }
             }
 
             return (success, output, error);

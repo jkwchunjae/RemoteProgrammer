@@ -10,6 +10,7 @@ builder.Services.AddControllers();
 builder.Services.AddSingleton<ProjectManager>();
 builder.Services.AddSingleton<JobManager>();
 builder.Services.AddSingleton<GitWorktreeManager>();
+builder.Services.AddSingleton<MemoryManager>();
 builder.Services.AddSingleton<ClaudeCodeExecutor>();
 
 // OS별 Claude 실행 전략 등록
