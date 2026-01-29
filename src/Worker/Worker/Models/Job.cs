@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Worker.Models;
 
 public class Job
@@ -17,6 +19,7 @@ public class Job
     public List<string> Logs { get; set; } = new();
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum JobStatus
 {
     Pending,

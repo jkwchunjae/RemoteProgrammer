@@ -1,7 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.Json;
 using Worker.Models;
+using Worker.Utils;
 
 namespace Worker.Services;
 
@@ -12,6 +12,7 @@ public class WebSocketService : BackgroundService
     private readonly ProjectManager _projectManager;
     private readonly JobManager _jobManager;
     private readonly ClaudeCodeExecutor _claudeCodeExecutor;
+    private readonly ISerializer _serializer;
     private ClientWebSocket? _webSocket;
     private readonly string _serverUrl;
     private readonly Dictionary<string, TaskCompletionSource<string>> _pendingUserInputs = new();
@@ -21,13 +22,15 @@ public class WebSocketService : BackgroundService
         ILogger<WebSocketService> logger,
         ProjectManager projectManager,
         JobManager jobManager,
-        ClaudeCodeExecutor claudeCodeExecutor)
+        ClaudeCodeExecutor claudeCodeExecutor,
+        ISerializer serializer)
     {
         _configuration = configuration;
         _logger = logger;
         _projectManager = projectManager;
         _jobManager = jobManager;
         _claudeCodeExecutor = claudeCodeExecutor;
+        _serializer = serializer;
         _serverUrl = configuration["RelayServerUrl"] ?? "ws://localhost:5000/worker";
     }
 
@@ -80,7 +83,7 @@ public class WebSocketService : BackgroundService
     {
         try
         {
-            var message = JsonSerializer.Deserialize<WorkerMessage>(messageJson);
+            var message = _serializer.Deserialize<WorkerMessage>(messageJson);
             if (message == null) return;
 
             _logger.LogInformation("Received message type: {Type}", message.Type);
@@ -114,7 +117,7 @@ public class WebSocketService : BackgroundService
     {
         try
         {
-            var jobRequest = JsonSerializer.Deserialize<JobRequest>(JsonSerializer.Serialize(data));
+            var jobRequest = _serializer.Deserialize<JobRequest>(_serializer.Serialize(data));
             if (jobRequest == null) return;
 
             _logger.LogInformation("Received job request: {JobId} for project {ProjectName}", jobRequest.JobId, jobRequest.ProjectName);
@@ -166,7 +169,7 @@ public class WebSocketService : BackgroundService
     {
         try
         {
-            var response = JsonSerializer.Deserialize<UserInputResponse>(JsonSerializer.Serialize(data));
+            var response = _serializer.Deserialize<UserInputResponse>(_serializer.Serialize(data));
             if (response == null) return;
 
             if (_pendingUserInputs.TryGetValue(response.JobId, out var tcs))
@@ -254,7 +257,7 @@ public class WebSocketService : BackgroundService
 
         try
         {
-            var json = JsonSerializer.Serialize(message);
+            var json = _serializer.Serialize(message);
             var bytes = Encoding.UTF8.GetBytes(json);
             await _webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }

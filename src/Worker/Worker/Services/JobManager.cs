@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Worker.Models;
+using Worker.Utils;
 
 namespace Worker.Services;
 
@@ -9,10 +9,11 @@ public class JobManager
     private readonly string _jobStatusPath;
     private readonly string _jobHistoryPath;
     private readonly ILogger<JobManager> _logger;
+    private readonly ISerializer _serializer;
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    public JobManager(IConfiguration configuration, ILogger<JobManager> logger)
+    public JobManager(IConfiguration configuration, ILogger<JobManager> logger, ISerializer serializer)
     {
         var configuredPath = configuration["WorkspacePath"] ?? "/workspace";
         // 절대경로로 변환
@@ -20,6 +21,7 @@ public class JobManager
         _jobStatusPath = Path.Combine(_workspacePath, "JobStatus");
         _jobHistoryPath = Path.Combine(_workspacePath, "JobHistory");
         _logger = logger;
+        _serializer = serializer;
 
         Directory.CreateDirectory(_jobStatusPath);
         Directory.CreateDirectory(_jobHistoryPath);
@@ -140,7 +142,7 @@ public class JobManager
             try
             {
                 var json = await File.ReadAllTextAsync(file);
-                var job = JsonSerializer.Deserialize<Job>(json);
+                var job = _serializer.Deserialize<Job>(json);
                 if (job != null)
                 {
                     jobs.Add(job);
@@ -167,7 +169,7 @@ public class JobManager
             try
             {
                 var json = File.ReadAllText(file);
-                var job = JsonSerializer.Deserialize<Job>(json);
+                var job = _serializer.Deserialize<Job>(json);
                 if (job != null)
                 {
                     _activeJobs[job.Id] = job;
@@ -186,7 +188,7 @@ public class JobManager
         try
         {
             var filePath = Path.Combine(_jobStatusPath, $"{job.Id}.json");
-            var json = JsonSerializer.Serialize(job, new JsonSerializerOptions { WriteIndented = true });
+            var json = _serializer.Serialize(job);
             await File.WriteAllTextAsync(filePath, json);
         }
         catch (Exception ex)
@@ -202,7 +204,7 @@ public class JobManager
             var statusFilePath = Path.Combine(_jobStatusPath, $"{job.Id}.json");
             var historyFilePath = Path.Combine(_jobHistoryPath, $"{job.Id}.json");
 
-            var json = JsonSerializer.Serialize(job, new JsonSerializerOptions { WriteIndented = true });
+            var json = _serializer.Serialize(job);
             await File.WriteAllTextAsync(historyFilePath, json);
 
             if (File.Exists(statusFilePath))

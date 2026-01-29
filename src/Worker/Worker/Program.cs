@@ -1,10 +1,14 @@
 using Worker.Services;
+using Worker.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
+
+// Serializer 등록
+builder.Services.AddSingleton<ISerializer, Json>();
 
 // Worker 서비스 등록
 builder.Services.AddSingleton<ProjectManager>();

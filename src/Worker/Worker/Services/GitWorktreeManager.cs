@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Worker.Models;
+using Worker.Utils;
 
 namespace Worker.Services;
 
@@ -11,16 +11,18 @@ public class GitWorktreeManager
     private readonly string _worktreesPath;
     private readonly string _metadataPath;
     private readonly ILogger<GitWorktreeManager> _logger;
+    private readonly ISerializer _serializer;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly Dictionary<string, Worktree> _worktreeCache = new();
 
-    public GitWorktreeManager(IConfiguration configuration, ILogger<GitWorktreeManager> logger)
+    public GitWorktreeManager(IConfiguration configuration, ILogger<GitWorktreeManager> logger, ISerializer serializer)
     {
         var configuredPath = configuration["WorkspacePath"] ?? "/workspace";
         _workspacePath = Path.GetFullPath(configuredPath);
         _worktreesPath = Path.Combine(_workspacePath, ".worktrees");
         _metadataPath = Path.Combine(_worktreesPath, ".metadata");
         _logger = logger;
+        _serializer = serializer;
 
         Directory.CreateDirectory(_worktreesPath);
         Directory.CreateDirectory(_metadataPath);
@@ -334,7 +336,7 @@ public class GitWorktreeManager
             try
             {
                 var json = File.ReadAllText(file);
-                var worktree = JsonSerializer.Deserialize<Worktree>(json);
+                var worktree = _serializer.Deserialize<Worktree>(json);
                 if (worktree != null)
                 {
                     var key = GetWorktreeKey(worktree.ProjectName, worktree.BranchName);
@@ -355,7 +357,7 @@ public class GitWorktreeManager
         try
         {
             var filePath = GetMetadataFilePath(worktree.ProjectName, worktree.BranchName);
-            var json = JsonSerializer.Serialize(worktree, new JsonSerializerOptions { WriteIndented = true });
+            var json = _serializer.Serialize(worktree);
             await File.WriteAllTextAsync(filePath, json);
         }
         catch (Exception ex)
