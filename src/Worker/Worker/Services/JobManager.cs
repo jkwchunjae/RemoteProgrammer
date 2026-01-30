@@ -150,7 +150,7 @@ public class JobManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading job history from {File}", file);
+                _logger.LogWarning(ex, "Failed to load job history from {File}. File may be from older version.", Path.GetFileName(file));
             }
         }
 
@@ -178,7 +178,7 @@ public class JobManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading job from {File}", file);
+                _logger.LogWarning(ex, "Failed to load job from {File}. File may be from older version.", Path.GetFileName(file));
             }
         }
     }

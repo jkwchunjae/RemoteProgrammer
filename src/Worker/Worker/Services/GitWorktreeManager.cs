@@ -87,30 +87,32 @@ public class GitWorktreeManager
                 await SaveWorktreeMetadataAsync(worktree);
                 return worktree;
             }
-
-            // Git worktree 생성
-            await CreateGitWorktreeAsync(projectPath, worktreePath, branchName);
-
-            // Worktree 객체 생성
-            var newWorktree = new Worktree
+            else
             {
-                ProjectName = projectName,
-                BranchName = branchName,
-                WorktreePath = worktreePath,
-                SourcePath = projectPath,
-                CreatedAt = DateTime.UtcNow,
-                LastUsedAt = DateTime.UtcNow,
-                JobCount = 1,
-                Status = WorktreeStatus.Active
-            };
+                // Git worktree 생성
+                await CreateGitWorktreeAsync(projectPath, worktreePath, branchName);
 
-            _worktreeCache[key] = newWorktree;
-            await SaveWorktreeMetadataAsync(newWorktree);
+                // Worktree 객체 생성
+                var newWorktree = new Worktree
+                {
+                    ProjectName = projectName,
+                    BranchName = branchName,
+                    WorktreePath = worktreePath,
+                    SourcePath = projectPath,
+                    CreatedAt = DateTime.UtcNow,
+                    LastUsedAt = DateTime.UtcNow,
+                    JobCount = 1,
+                    Status = WorktreeStatus.Active
+                };
 
-            _logger.LogInformation("Created new worktree for {ProjectName}/{BranchName} at {WorktreePath}",
-                projectName, branchName, worktreePath);
+                _worktreeCache[key] = newWorktree;
+                await SaveWorktreeMetadataAsync(newWorktree);
 
-            return newWorktree;
+                _logger.LogInformation("Created new worktree for {ProjectName}/{BranchName} at {WorktreePath}",
+                    projectName, branchName, worktreePath);
+
+                return newWorktree;
+            }
         }
         finally
         {
