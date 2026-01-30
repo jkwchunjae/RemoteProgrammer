@@ -30,10 +30,20 @@ public class UnixClaudeExecutionStrategy : IClaudeExecutionStrategy
 
 cd ""{workingPath}""
 
+# Context instruction if memory.md exists
+CONTEXT_INSTRUCTION=""""
+if [ -f ""./memory.md"" ]; then
+    CONTEXT_INSTRUCTION=""
+IMPORTANT: Before starting this task, READ THE FILE memory.md in the current directory.
+It contains the history of previous jobs in this branch and important context.
+
+""
+fi
+
 # Claude Code 실행
 # heredoc을 사용하여 여러 줄 텍스트를 안전하게 전달
-claude <<'CLAUDE_INPUT_EOF'
-{job.Description}
+claude <<CLAUDE_INPUT_EOF
+${{CONTEXT_INSTRUCTION}}{job.Description}
 CLAUDE_INPUT_EOF
 
 exit $?
