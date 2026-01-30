@@ -8,7 +8,7 @@ public class Job
     public required string ProjectName { get; set; }
     public required string ProjectPath { get; set; }
     public required string Description { get; set; }
-    public required string BigTaskName { get; set; }
+    public string BigTaskName { get; set; } = "main"; // 기본값: main 브랜치
     public string? WorktreePath { get; set; }
     public JobStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
